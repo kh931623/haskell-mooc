@@ -351,11 +351,11 @@ inc (O b) = I b
 inc (I b) = O (inc b)
 
 prettyPrint :: Bin -> String
-prettyPrint = reverse . f
+prettyPrint input = f input ""
   where
-    f End = ""
-    f (O next) = '0' : f next
-    f (I next) = '1' : f next
+    f End acc = acc
+    f (O next) acc = f next ('0' : acc)
+    f (I next) acc = f next ('1' : acc)
 
 fromBin :: Bin -> Int
 fromBin = f 0
@@ -365,13 +365,15 @@ fromBin = f 0
     f k (O next) = f (k + 1) next
 
 toBin :: Int -> Bin
-toBin n
-  | r == 1 = case next of
-      0 -> I End
-      _ -> I (toBin next)
-  | otherwise = case next of
-      0 -> O End
-      _ -> O (toBin next)
+toBin 0 = O End
+toBin xs = (toBin' . bits) xs
+
+bits :: Int -> [Int]
+bits 0 = []
+bits n = n `mod` 2 : bits (n `div` 2)
+
+toBin' :: [Int] -> Bin
+toBin' = foldr f End
   where
-    r = n `mod` 2
-    next = n `div` 2
+    f 1 acc = I acc
+    f 0 acc = O acc
