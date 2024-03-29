@@ -351,10 +351,27 @@ inc (O b) = I b
 inc (I b) = O (inc b)
 
 prettyPrint :: Bin -> String
-prettyPrint = todo
+prettyPrint = reverse . f
+  where
+    f End = ""
+    f (O next) = '0' : f next
+    f (I next) = '1' : f next
 
 fromBin :: Bin -> Int
-fromBin = todo
+fromBin = f 0
+  where
+    f k End = 0
+    f k (I next) = 2 ^ k + f (k + 1) next
+    f k (O next) = f (k + 1) next
 
 toBin :: Int -> Bin
-toBin = todo
+toBin n
+  | r == 1 = case next of
+      0 -> I End
+      _ -> I (toBin next)
+  | otherwise = case next of
+      0 -> O End
+      _ -> O (toBin next)
+  where
+    r = n `mod` 2
+    next = n `div` 2
