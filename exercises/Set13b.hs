@@ -225,9 +225,17 @@ findSum2 ks ns = do
 allSums :: [Int] -> [Int]
 allSums []  = [0]
 allSums [x] = [x, 0]
-allSums (x : xs) = allSums xs ++ do
-  y <- xs
-  [x + y]
+allSums xs = go xs 0 ++ allSums (tail xs)
+  where
+    go [] _acc = []
+    go (x : xs) acc = newAcc : go xs newAcc
+      where
+        newAcc = x + acc
+
+foo :: [Int]
+foo = do
+  [1, 2, 3]
+  [4]
 
 
 ------------------------------------------------------------------------------
@@ -417,4 +425,7 @@ instance Monad SL where
 --  4
 
 mkCounter :: IO (IO (), IO Int)
-mkCounter = todo
+mkCounter = do
+  count <- newIORef 0
+  let inc = modifyIORef count (+1)
+  return (inc, readIORef count)
