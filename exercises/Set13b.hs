@@ -2,13 +2,14 @@
 
 module Set13b where
 
-import Mooc.Todo
+import           Mooc.Todo
 
-import Control.Monad
-import Control.Monad.Trans.State
-import Data.Char
-import Data.IORef
-import Data.List
+import           Control.Monad
+import           Control.Monad.Trans.State
+import           Data.Char
+import           Data.IORef
+import           Data.List
+import qualified Data.Set                  as Set
 
 
 ------------------------------------------------------------------------------
@@ -42,7 +43,11 @@ test = do
   return (x<10)
 
 ifM :: Monad m => m Bool -> m a -> m a -> m a
-ifM opBool opThen opElse = todo
+ifM opBool opThen opElse = do
+  b <- opBool
+  if b
+  then opThen
+  else opElse
 
 ------------------------------------------------------------------------------
 -- Ex 2: the standard library function Control.Monad.mapM defines a
@@ -73,18 +78,29 @@ ifM opBool opThen opElse = todo
 --  runState (mapM2 perhapsIncrement [True,False,True] [1,2,4]) 0
 --    ==> ([(),(),()],5)
 
+mapM' :: Monad m => (a -> m b) -> [a] -> m [b]
+mapM' f [] = return []
+mapM' f (x : xs) = do
+  y <- f x
+  ys <- mapM' f xs
+  return (y : ys)
+
 -- Do not change safeDiv or perhapsIncrement, they're used by the
 -- examples & test outputs.
 safeDiv :: Double -> Double -> Maybe Double
 safeDiv x 0.0 = Nothing
-safeDiv x y = Just (x/y)
+safeDiv x y   = Just (x/y)
 
 perhapsIncrement :: Bool -> Int -> State Int ()
-perhapsIncrement True x = modify (+x)
+perhapsIncrement True x  = modify (+x)
 perhapsIncrement False _ = return ()
 
 mapM2 :: Monad m => (a -> b -> m c) -> [a] -> [b] -> m [c]
-mapM2 op xs ys = todo
+mapM2 op (x : xs) (y : ys) = do
+  z <- op x y
+  zs <- mapM2 op xs ys
+  return (z : zs)
+mapM2 op _ _ = return []
 
 ------------------------------------------------------------------------------
 -- Ex 3: Finding paths.
@@ -142,14 +158,26 @@ maze1 = [("Entry",["Pit","Corridor 1"])
 
 
 visit :: [(String,[String])] -> String -> State [String] ()
-visit maze place = todo
+visit maze place = do
+  visited <- get
+  if place `elem` visited
+  then return ()
+  else do
+    put (place : visited)
+    let
+      m = lookup place maze
+    case m of
+      (Just places) -> mapM_ (visit maze) places
+      _             -> return ()
 
 -- Now you should be able to implement path using visit. If you run
 -- visit on a place using an empty state, you'll get a state that
 -- lists all the places that are reachable from the starting place.
 
 path :: [(String,[String])] -> String -> String -> Bool
-path maze place1 place2 = todo
+path maze place1 place2 = place2 `elem` places
+  where
+    (_, places) = runState (visit maze place1) []
 
 ------------------------------------------------------------------------------
 -- Ex 4: Given two lists, ks and ns, find numbers i and j from ks,
@@ -165,7 +193,16 @@ path maze place1 place2 = todo
 -- PS. The tests don't care about the order of results.
 
 findSum2 :: [Int] -> [Int] -> [(Int,Int,Int)]
-findSum2 ks ns = todo
+findSum2 ks ns = do
+  i <- ks
+  j <- ks
+  let result = i + j
+  if Set.member result nset
+  then [(i, j, result)]
+  else []
+    where
+      nset = Set.fromList ns
+
 
 ------------------------------------------------------------------------------
 -- Ex 5: compute all possible sums of elements from the given
@@ -186,7 +223,12 @@ findSum2 ks ns = todo
 --     ==> [7,3,5,1,6,2,4,0]
 
 allSums :: [Int] -> [Int]
-allSums xs = todo
+allSums []  = [0]
+allSums [x] = [x, 0]
+allSums (x : xs) = allSums xs ++ do
+  y <- xs
+  [x + y]
+
 
 ------------------------------------------------------------------------------
 -- Ex 6: the standard library defines the function
@@ -216,7 +258,9 @@ sumBounded :: Int -> [Int] -> Maybe Int
 sumBounded k xs = foldM (f1 k) 0 xs
 
 f1 :: Int -> Int -> Int -> Maybe Int
-f1 k acc x = todo
+f1 k acc x
+  | acc + x > k = Nothing
+  | otherwise = Just $ acc + x
 
 -- sumNotTwice computes the sum of a list, but counts only the first
 -- occurrence of each value.
@@ -230,7 +274,13 @@ sumNotTwice :: [Int] -> Int
 sumNotTwice xs = fst $ runState (foldM f2 0 xs) []
 
 f2 :: Int -> Int -> State [Int] Int
-f2 acc x = todo
+f2 acc x = do
+  xs <- get
+  if elem x xs
+  then return acc
+  else do
+    put (x : xs)
+    return (acc + x)
 
 ------------------------------------------------------------------------------
 -- Ex 7: here is the Result type from Set12. Implement a Monad Result
@@ -255,7 +305,9 @@ data Result a = MkResult a | NoResult | Failure String deriving (Show,Eq)
 
 instance Functor Result where
   -- The same Functor instance you used in Set12 works here.
-  fmap = todo
+  fmap f (MkResult v) = MkResult (f v)
+  fmap _f NoResult    = NoResult
+  fmap _f (Failure s) = Failure s
 
 -- This is an Applicative instance that works for any monad, you
 -- can just ignore it for now. We'll get back to Applicative later.
@@ -265,8 +317,10 @@ instance Applicative Result where
 
 instance Monad Result where
   -- implement return and >>=
-  return = todo
-  (>>=) = todo
+  return = MkResult
+  (MkResult v) >>= f   = f v
+  NoResult >>= _f      = NoResult
+  (Failure str) >>= _f = Failure str
 
 ------------------------------------------------------------------------------
 -- Ex 8: Here is the type SL that combines the State and Logger
@@ -314,7 +368,11 @@ modifySL f = SL (\s -> ((),f s,[]))
 
 instance Functor SL where
   -- implement fmap
-  fmap = todo
+  fmap f op = SL newFunc
+    where
+      newFunc oldState = (f x, newState, logs)
+        where
+          (x, newState, logs) = runSL op oldState
 
 -- This is an Applicative instance that works for any monad, you
 -- can just ignore it for now. We'll get back to Applicative later.
@@ -324,8 +382,14 @@ instance Applicative SL where
 
 instance Monad SL where
   -- implement return and >>=
-  return = todo
-  (>>=) = todo
+  return x = SL (\s -> (x, s, []))
+  op >>= f = SL h
+    where
+      h state0 = let
+        (x, state1, la) = runSL op state0
+        op2 = f x
+        (y, state2, lb) =  runSL op2 state1
+        in (y, state2, la ++ lb)
 
 ------------------------------------------------------------------------------
 -- Ex 9: Implement the operation mkCounter that produces the IO operations
