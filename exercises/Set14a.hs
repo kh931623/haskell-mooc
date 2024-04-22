@@ -3,17 +3,17 @@ module Set14a where
 -- Remember to browse the docs of the Data.Text and Data.ByteString
 -- libraries while working on the exercises!
 
-import Mooc.Todo
+import           Mooc.Todo
 
-import Data.Bits
-import Data.Char
-import Data.Text.Encoding
-import Data.Word
-import Data.Int
-import qualified Data.Text as T
-import qualified Data.Text.Lazy as TL
-import qualified Data.ByteString as B
+import           Data.Bits
+import qualified Data.ByteString      as B
 import qualified Data.ByteString.Lazy as BL
+import           Data.Char
+import           Data.Int
+import qualified Data.Text            as T
+import           Data.Text.Encoding
+import qualified Data.Text.Lazy       as TL
+import           Data.Word
 
 ------------------------------------------------------------------------------
 -- Ex 1: Greet a person. Given the name of a person as a Text, return
@@ -28,7 +28,12 @@ import qualified Data.ByteString.Lazy as BL
 --  greetText (T.pack "Benedict Cumberbatch") ==> "Hello, Benedict Cumber...!"
 
 greetText :: T.Text -> T.Text
-greetText = todo
+greetText name
+  | T.length name > 15 = hello <> T.take 15 name <> T.pack "..." <> ending
+  | otherwise = hello <> name <> ending
+  where
+    hello = T.pack "Hello, "
+    ending = T.pack "!"
 
 ------------------------------------------------------------------------------
 -- Ex 2: Capitalize every second word of a Text.
@@ -39,8 +44,15 @@ greetText = todo
 --   shout (T.pack "word")
 --     ==> "WORD"
 
+captialize :: T.Text -> T.Text
+captialize = T.map toUpper
+
 shout :: T.Text -> T.Text
-shout = todo
+shout input = (T.unwords . go . T.words) input
+  where
+    go []           = []
+    go [x]          = [captialize x]
+    go (x : y : xs) = captialize x : y : go xs
 
 ------------------------------------------------------------------------------
 -- Ex 3: Find the longest sequence of a single character repeating in
@@ -50,8 +62,15 @@ shout = todo
 --   longestRepeat (T.pack "") ==> 0
 --   longestRepeat (T.pack "aabbbbccc") ==> 4
 
+fetchSecond :: (Char, Int, Int) -> Int
+fetchSecond (_c, max, _count) = max
+
 longestRepeat :: T.Text -> Int
-longestRepeat = todo
+longestRepeat = fetchSecond . T.foldl' go (' ', 0, 0)
+  where
+    go (current, maxCount, count) c
+      | c == current = (current, max maxCount (count + 1), count + 1)
+      | otherwise = (c, max maxCount 1, 1)
 
 ------------------------------------------------------------------------------
 -- Ex 4: Given a lazy (potentially infinite) Text, extract the first n
@@ -64,7 +83,7 @@ longestRepeat = todo
 --   takeStrict 15 (TL.pack (cycle "asdf"))  ==>  "asdfasdfasdfasd"
 
 takeStrict :: Int64 -> TL.Text -> T.Text
-takeStrict = todo
+takeStrict n = TL.toStrict . TL.take n
 
 ------------------------------------------------------------------------------
 -- Ex 5: Find the difference between the largest and smallest byte
@@ -76,7 +95,12 @@ takeStrict = todo
 --   byteRange (B.pack [3]) ==> 0
 
 byteRange :: B.ByteString -> Word8
-byteRange = todo
+byteRange bs
+  | B.null bs || B.length bs == 1 = 0
+  | otherwise = let
+    bmin = B.minimum bs
+    bmax = B.maximum bs
+    in bmax - bmin
 
 ------------------------------------------------------------------------------
 -- Ex 6: Compute the XOR checksum of a ByteString. The XOR checksum of
@@ -97,7 +121,7 @@ byteRange = todo
 --   xorChecksum (B.pack []) ==> 0
 
 xorChecksum :: B.ByteString -> Word8
-xorChecksum = todo
+xorChecksum bs = B.foldr xor 0 bs
 
 ------------------------------------------------------------------------------
 -- Ex 7: Given a ByteString, compute how many UTF-8 characters it
@@ -114,7 +138,9 @@ xorChecksum = todo
 --   countUtf8Chars (B.drop 1 (encodeUtf8 (T.pack "åäö"))) ==> Nothing
 
 countUtf8Chars :: B.ByteString -> Maybe Int
-countUtf8Chars = todo
+countUtf8Chars bs = case decodeUtf8' bs of
+    Right txt -> Just $ T.length txt
+    _         -> Nothing
 
 ------------------------------------------------------------------------------
 -- Ex 8: Given a (nonempty) strict ByteString b, generate an infinite
@@ -126,5 +152,7 @@ countUtf8Chars = todo
 --     ==> [0,1,2,2,1,0,0,1,2,2,1,0,0,1,2,2,1,0,0,1]
 
 pingpong :: B.ByteString -> BL.ByteString
-pingpong = todo
+pingpong bs = B.fromStrict (bs <> rbs) <> pingpong bs
+  where
+    rbs = B.reverse bs
 
