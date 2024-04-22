@@ -222,21 +222,22 @@ findSum2 ks ns = do
 --   allSums [1,2,4]
 --     ==> [7,3,5,1,6,2,4,0]
 
+allSums' :: Int -> [Int] -> [Int]
+allSums' n xs
+  | n <= 0 = []
+  | otherwise = ys ++ zs
+  where
+    ys = map (n-) xs
+    zs = do
+      y <- ys
+      allSums' y xs
+
 allSums :: [Int] -> [Int]
 allSums []  = [0]
 allSums [x] = [x, 0]
-allSums xs = go xs 0 ++ allSums (tail xs)
+allSums xs = s : allSums' s xs
   where
-    go [] _acc = []
-    go (x : xs) acc = newAcc : go xs newAcc
-      where
-        newAcc = x + acc
-
-foo :: [Int]
-foo = do
-  [1, 2, 3]
-  [4]
-
+    s = sum xs
 
 ------------------------------------------------------------------------------
 -- Ex 6: the standard library defines the function
